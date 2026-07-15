@@ -7,8 +7,6 @@
 <style>
   :root {
     --bg: #0a0b10;
-    --panel: #181b22;
-    --panel2: #1f2530;
     --accent: #ffcf5b;
     --accent2: #4fd1c5;
     --text: #eef0f6;
@@ -24,10 +22,10 @@
     display: flex; align-items: center; justify-content: center; padding: 24px;
     user-select: none;
   }
-  .app { width: 100%; max-width: 480px; text-align: center; }
-  h1 { font-size: 15px; letter-spacing: .5px; color: var(--muted); font-weight: 600; text-transform: uppercase; margin-bottom: 24px; }
+  .app { width: 100%; max-width: 440px; text-align: center; }
+  h1 { font-size: 15px; letter-spacing: .5px; color: var(--muted); font-weight: 600; text-transform: uppercase; margin-bottom: 22px; }
 
-  .count { display: flex; gap: 8px; justify-content: center; margin-bottom: 28px; }
+  .count { display: flex; gap: 8px; justify-content: center; margin-bottom: 24px; }
   .count button {
     width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line);
     background: transparent; color: var(--muted); font-size: 15px; font-weight: 700;
@@ -35,35 +33,58 @@
   }
   .count button.active { background: var(--accent); color: #2b2405; border-color: var(--accent); }
 
-  .dice-area {
-    display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;
-    min-height: 90px; margin-bottom: 28px;
+  /* 위에서 내려다본 상자(트레이) */
+  .tray {
+    position: relative; width: min(86vw, 360px); aspect-ratio: 1; margin: 0 auto 24px;
+    border-radius: 22px; padding: 16px; cursor: pointer;
+    background: radial-gradient(130% 130% at 50% 28%, #16493f 0%, #0d332c 72%);
+    box-shadow:
+      inset 0 0 0 3px rgba(255,255,255,.04),
+      inset 0 12px 32px rgba(0,0,0,.55),
+      inset 0 -8px 22px rgba(0,0,0,.45),
+      0 20px 55px rgba(0,0,0,.5);
+  }
+  /* 주사위가 굴러다니는 바닥(벽 안쪽 영역) */
+  .floor {
+    position: absolute; inset: 16px; border-radius: 12px; overflow: hidden;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,.5);
   }
   .die {
-    width: 72px; height: 72px; border-radius: 16px;
-    background: linear-gradient(180deg, #fdfdfd, #e3e6ee);
-    box-shadow: 0 8px 24px rgba(0,0,0,.45), inset 0 -3px 6px rgba(0,0,0,.15);
+    position: absolute; top: 0; left: 0; width: 52px; height: 52px;
+    border-radius: 11px;
+    background: linear-gradient(150deg, #ffffff, #e2e6f0);
+    box-shadow: 0 6px 11px rgba(0,0,0,.42);
     display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr);
-    padding: 12px; gap: 2px;
+    padding: 9px; gap: 2px;
+    will-change: transform;
   }
-  .die.rolling { animation: shake .5s ease; }
-  @keyframes shake {
-    0%,100% { transform: translateY(0) rotate(0); }
-    25% { transform: translateY(-10px) rotate(-12deg); }
-    50% { transform: translateY(6px) rotate(10deg); }
-    75% { transform: translateY(-4px) rotate(-6deg); }
-  }
-  .die .pip {
+  .pip {
     align-self: center; justify-self: center;
-    width: 12px; height: 12px; border-radius: 50%; background: var(--pip);
+    width: 9px; height: 9px; border-radius: 50%; background: var(--pip);
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.3);
   }
   /* pip positions on a 3x3 grid */
   .p1 { grid-area: 1/1; } .p2 { grid-area: 1/2; } .p3 { grid-area: 1/3; }
   .p4 { grid-area: 2/1; } .p5 { grid-area: 2/2; } .p6 { grid-area: 2/3; }
   .p7 { grid-area: 3/1; } .p8 { grid-area: 3/2; } .p9 { grid-area: 3/3; }
 
-  .total { font-size: 15px; color: var(--muted); margin-bottom: 24px; min-height: 22px; }
-  .total b { color: var(--text); font-size: 22px; }
+  /* 화면(트레이) 중앙에 뜨는 결과 */
+  .result {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(.8); pointer-events: none;
+    transition: opacity .35s ease, transform .4s cubic-bezier(.34,1.56,.64,1);
+  }
+  .result.show { opacity: 1; transform: scale(1); }
+  .result .chip {
+    background: rgba(8,12,16,.86); backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,.1); border-radius: 22px;
+    padding: 18px 34px; box-shadow: 0 16px 44px rgba(0,0,0,.6);
+  }
+  .result .sum {
+    font-size: 60px; font-weight: 800; line-height: 1; color: #fff;
+    font-variant-numeric: tabular-nums; text-shadow: 0 2px 16px rgba(0,0,0,.5);
+  }
+  .result .detail { margin-top: 8px; font-size: 13px; color: #cdd3e0; }
 
   .roll-btn {
     width: 100%; padding: 16px; border-radius: 14px; border: none;
@@ -72,9 +93,9 @@
   }
   .roll-btn:hover { transform: translateY(-2px); }
   .roll-btn:active { transform: translateY(0); }
+  .roll-btn:disabled { opacity: .55; cursor: default; transform: none; }
 
-  .history { margin-top: 24px; color: var(--muted); font-size: 13px; min-height: 20px; }
-  .history span { color: var(--text); }
+  .hint { margin-top: 14px; color: var(--muted); font-size: 12px; }
 </style>
 </head>
 <body>
@@ -89,13 +110,18 @@
       <button data-n="5">5</button>
     </div>
 
-    <div class="dice-area" id="diceArea"></div>
-
-    <div class="total" id="total">굴려서 시작해 보세요</div>
+    <div class="tray" id="tray">
+      <div class="floor" id="floor"></div>
+      <div class="result" id="result">
+        <div class="chip">
+          <div class="sum" id="sum">0</div>
+          <div class="detail" id="detail"></div>
+        </div>
+      </div>
+    </div>
 
     <button class="roll-btn" id="rollBtn">🎲 굴리기</button>
-
-    <div class="history" id="history"></div>
+    <div class="hint">상자를 눌러도 굴러갑니다</div>
   </div>
 
 <script>
@@ -109,43 +135,217 @@ const FACES = {
   6: [1, 3, 4, 6, 7, 9],
 };
 
-let count = 2;
-const diceArea = document.getElementById('diceArea');
-const totalEl = document.getElementById('total');
-const historyEl = document.getElementById('history');
+// 물리 상수
+const FRICTION = 0.965;     // 마찰(매 프레임 속도 감소 → 서서히 멈춤)
+const WALL_BOUNCE = 0.66;   // 벽에 튕길 때 남는 속도 비율
+const STOP_SPEED = 0.35;    // 이 속도 아래면 멈춘 것으로 간주
+const TUMBLE_SPEED = 2.2;   // 이 속도 위에선 눈이 마구 바뀜(구르는 느낌)
+const R = 26;               // 주사위 반지름(크기의 절반)
+
+const floor = document.getElementById('floor');
+const tray = document.getElementById('tray');
+const result = document.getElementById('result');
+const sumEl = document.getElementById('sum');
+const detailEl = document.getElementById('detail');
 const rollBtn = document.getElementById('rollBtn');
 
-function rollOne(){ return Math.floor(Math.random() * 6) + 1; }
+let count = 2;
+let dice = [];
+let animating = false;
+let rafId = 0;
+let floorW = 0, floorH = 0;
 
-function drawDie(value){
-  const die = document.createElement('div');
-  die.className = 'die rolling';
-  FACES[value].forEach(spot => {
+const rand = (min, max) => Math.random() * (max - min) + min;
+const rollOne = () => Math.floor(Math.random() * 6) + 1;
+
+function measure(){
+  // 보이는 탭에선 clientWidth가 정확하지만, 숨김 탭 등에선 0이 나올 수 있어 폴백을 둔다
+  floorW = floor.clientWidth;
+  floorH = floor.clientHeight;
+  if(!floorW){
+    const rectW = tray.getBoundingClientRect().width;
+    const vw = window.innerWidth || 360;
+    floorW = floorH = Math.round(rectW ? rectW - 32 : Math.min(vw * 0.86, 360) - 32);
+  }
+  if(!floorW || floorW <= 0) floorW = floorH = 328; // 최후의 폴백(측정 불가 환경)
+}
+
+function renderFace(el, face){
+  el.innerHTML = '';
+  FACES[face].forEach(spot => {
     const pip = document.createElement('div');
     pip.className = 'pip p' + spot;
-    die.appendChild(pip);
+    el.appendChild(pip);
   });
-  return die;
+}
+
+function drawDie(d){
+  d.el.style.transform = `translate(${d.x - R}px, ${d.y - R}px) rotate(${d.angle}deg)`;
+}
+
+// count에 맞춰 주사위를 상자 안에 새로 배치한다
+function buildDice(n){
+  cancelAnimationFrame(rafId);
+  animating = false;
+  floor.querySelectorAll('.die').forEach(el => el.remove());
+  dice = [];
+  measure();
+  for(let i = 0; i < n; i++){
+    const el = document.createElement('div');
+    el.className = 'die';
+    floor.appendChild(el);
+    const d = { el, x: 0, y: 0, vx: 0, vy: 0, angle: rand(0, 360), va: 0, face: rollOne(), tick: 0 };
+    placeInitial(d);
+    renderFace(el, d.face);
+    drawDie(d);
+    dice.push(d);
+  }
+  hideResult();
+}
+
+// 서로 겹치지 않게 무작위 위치에 놓는다
+function placeInitial(d){
+  const pad = R + 4;
+  for(let tries = 0; tries < 30; tries++){
+    d.x = rand(pad, floorW - pad);
+    d.y = rand(pad, floorH - pad);
+    let ok = true;
+    for(const o of dice){
+      if(Math.hypot(o.x - d.x, o.y - d.y) < R * 2 + 4){ ok = false; break; }
+    }
+    if(ok) return;
+  }
 }
 
 function roll(){
-  const values = Array.from({ length: count }, rollOne);
-  diceArea.innerHTML = '';
-  values.forEach(v => diceArea.appendChild(drawDie(v)));
-
-  const sum = values.reduce((a, b) => a + b, 0);
-  totalEl.innerHTML = `합계 <b>${sum}</b>`;
-  historyEl.innerHTML = `이번 결과: <span>${values.join(' + ')}</span>`;
+  if(animating) return;
+  measure();
+  hideResult();
+  // 각 주사위에 무작위 방향·세기의 속도와 회전을 준다
+  dice.forEach(d => {
+    d.final = rollOne();
+    const speed = rand(9, 14);
+    const dir = rand(0, Math.PI * 2);
+    d.vx = Math.cos(dir) * speed;
+    d.vy = Math.sin(dir) * speed;
+    d.va = rand(-18, 18);
+    d.tick = 0;
+  });
+  animating = true;
+  rollBtn.disabled = true;
+  rafId = requestAnimationFrame(step);
 }
+
+function step(){
+  // 1) 이동 + 마찰 감속 + 벽 충돌
+  for(const d of dice){
+    d.x += d.vx; d.y += d.vy;
+    d.vx *= FRICTION; d.vy *= FRICTION;
+    d.angle += d.va; d.va *= FRICTION;
+
+    if(d.x < R){ d.x = R; d.vx = Math.abs(d.vx) * WALL_BOUNCE; d.va += rand(-4, 4); }
+    if(d.x > floorW - R){ d.x = floorW - R; d.vx = -Math.abs(d.vx) * WALL_BOUNCE; d.va += rand(-4, 4); }
+    if(d.y < R){ d.y = R; d.vy = Math.abs(d.vy) * WALL_BOUNCE; d.va += rand(-4, 4); }
+    if(d.y > floorH - R){ d.y = floorH - R; d.vy = -Math.abs(d.vy) * WALL_BOUNCE; d.va += rand(-4, 4); }
+  }
+
+  // 2) 주사위끼리 충돌
+  for(let i = 0; i < dice.length; i++){
+    for(let j = i + 1; j < dice.length; j++){
+      resolveCollision(dice[i], dice[j]);
+    }
+  }
+
+  // 3) 그리기 + 구르는 동안 눈 바꾸기 + 멈췄는지 확인
+  let moving = false;
+  for(const d of dice){
+    const sp = Math.hypot(d.vx, d.vy);
+    if(sp > STOP_SPEED || Math.abs(d.va) > 0.6) moving = true;
+    if(sp > TUMBLE_SPEED && (++d.tick % 3 === 0)){
+      d.face = rollOne();
+      renderFace(d.el, d.face);
+    }
+    drawDie(d);
+  }
+
+  if(moving){
+    rafId = requestAnimationFrame(step);
+  } else {
+    settle();
+  }
+}
+
+// 두 주사위를 원으로 보고 충돌 처리(같은 질량, 겹침 분리 + 속도 교환)
+function resolveCollision(a, b){
+  const dx = b.x - a.x, dy = b.y - a.y;
+  let dist = Math.hypot(dx, dy);
+  const min = R * 2;
+  if(dist === 0) dist = 0.01;
+  if(dist < min){
+    const nx = dx / dist, ny = dy / dist;
+    const overlap = (min - dist) / 2;
+    a.x -= nx * overlap; a.y -= ny * overlap;
+    b.x += nx * overlap; b.y += ny * overlap;
+    const va = a.vx * nx + a.vy * ny;
+    const vb = b.vx * nx + b.vy * ny;
+    const diff = vb - va;
+    a.vx += diff * nx; a.vy += diff * ny;
+    b.vx -= diff * nx; b.vy -= diff * ny;
+    a.va += rand(-3, 3); b.va += rand(-3, 3);
+  }
+}
+
+function settle(){
+  animating = false;
+  dice.forEach(d => {
+    d.vx = d.vy = d.va = 0;
+    d.angle = Math.round(d.angle / 90) * 90;   // 반듯하게 정렬
+    d.face = d.final;
+    renderFace(d.el, d.face);
+    drawDie(d);
+  });
+  showResult();
+  rollBtn.disabled = false;
+}
+
+function showResult(){
+  const vals = dice.map(d => d.final);
+  const sum = vals.reduce((a, b) => a + b, 0);
+  sumEl.textContent = sum;
+  detailEl.textContent = vals.join(' + ');
+  result.classList.add('show');
+}
+function hideResult(){ result.classList.remove('show'); }
 
 document.querySelectorAll('#count button').forEach(btn => {
   btn.onclick = () => {
+    if(animating) return;
     document.querySelectorAll('#count button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     count = +btn.dataset.n;
+    buildDice(count);
   };
 });
 rollBtn.onclick = roll;
+tray.onclick = roll;
+
+// 창 크기가 바뀌면 주사위를 상자 안으로 다시 가둔다
+window.addEventListener('resize', () => {
+  measure();
+  dice.forEach(d => {
+    d.x = Math.max(R, Math.min(floorW - R, d.x));
+    d.y = Math.max(R, Math.min(floorH - R, d.y));
+    drawDie(d);
+  });
+});
+
+// 상자 크기가 잡힌 뒤(레이아웃 완료) 주사위를 배치한다
+function initWhenReady(){
+  measure();
+  if(floorW === 0){ setTimeout(initWhenReady, 50); return; }
+  buildDice(count);
+}
+initWhenReady();
 </script>
 </body>
 </html>
