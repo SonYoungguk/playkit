@@ -46,12 +46,19 @@
     display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr);
     padding: 12px; gap: 2px;
   }
-  .die.rolling { animation: shake .5s ease; }
-  @keyframes shake {
-    0%,100% { transform: translateY(0) rotate(0); }
-    25% { transform: translateY(-10px) rotate(-12deg); }
-    50% { transform: translateY(6px) rotate(10deg); }
-    75% { transform: translateY(-4px) rotate(-6deg); }
+  .die.rolling { animation: tumble .28s linear infinite; }
+  @keyframes tumble {
+    0%   { transform: translateY(0) rotate(0deg) scale(1); }
+    25%  { transform: translateY(-14px) rotate(90deg) scale(1.05); }
+    50%  { transform: translateY(0) rotate(180deg) scale(1); }
+    75%  { transform: translateY(-8px) rotate(270deg) scale(1.05); }
+    100% { transform: translateY(0) rotate(360deg) scale(1); }
+  }
+  .die.settle { animation: settle .4s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes settle {
+    0%   { transform: translateY(-12px) scale(1.12); }
+    60%  { transform: translateY(3px) scale(.97); }
+    100% { transform: translateY(0) scale(1); }
   }
   .die .pip {
     align-self: center; justify-self: center;
@@ -72,6 +79,7 @@
   }
   .roll-btn:hover { transform: translateY(-2px); }
   .roll-btn:active { transform: translateY(0); }
+  .roll-btn:disabled { opacity: .55; cursor: default; transform: none; }
 
   .history { margin-top: 24px; color: var(--muted); font-size: 13px; min-height: 20px; }
   .history span { color: var(--text); }
@@ -115,27 +123,62 @@ const totalEl = document.getElementById('total');
 const historyEl = document.getElementById('history');
 const rollBtn = document.getElementById('rollBtn');
 
+const ROLL_MS = 750;   // 구르는 시간
+const TICK_MS = 70;    // 눈이 바뀌는 간격
+let rolling = false;
+
 function rollOne(){ return Math.floor(Math.random() * 6) + 1; }
 
-function drawDie(value){
-  const die = document.createElement('div');
-  die.className = 'die rolling';
+// 주사위 한 개의 눈(pip)을 value에 맞게 다시 그린다
+function setFace(die, value){
+  die.innerHTML = '';
   FACES[value].forEach(spot => {
     const pip = document.createElement('div');
     pip.className = 'pip p' + spot;
     die.appendChild(pip);
   });
-  return die;
 }
 
 function roll(){
-  const values = Array.from({ length: count }, rollOne);
-  diceArea.innerHTML = '';
-  values.forEach(v => diceArea.appendChild(drawDie(v)));
+  if(rolling) return;              // 굴리는 중엔 중복 실행 방지
+  rolling = true;
+  rollBtn.disabled = true;
 
-  const sum = values.reduce((a, b) => a + b, 0);
-  totalEl.innerHTML = `합계 <b>${sum}</b>`;
-  historyEl.innerHTML = `이번 결과: <span>${values.join(' + ')}</span>`;
+  const finals = Array.from({ length: count }, rollOne);
+
+  // 구르는 상태의 주사위들을 만든다
+  diceArea.innerHTML = '';
+  const diceEls = finals.map(() => {
+    const die = document.createElement('div');
+    die.className = 'die rolling';
+    setFace(die, rollOne());
+    diceArea.appendChild(die);
+    return die;
+  });
+  totalEl.textContent = '굴리는 중…';
+  historyEl.innerHTML = '';
+
+  // 구르는 동안 눈을 무작위로 계속 바꾼다
+  const spin = setInterval(() => {
+    diceEls.forEach(die => setFace(die, rollOne()));
+  }, TICK_MS);
+
+  // 일정 시간 뒤 멈추고 최종 눈으로 착지시킨다
+  setTimeout(() => {
+    clearInterval(spin);
+    diceEls.forEach((die, i) => {
+      setFace(die, finals[i]);
+      die.classList.remove('rolling');
+      die.classList.add('settle');
+    });
+
+    const sum = finals.reduce((a, b) => a + b, 0);
+    totalEl.innerHTML = `합계 <b>${sum}</b>`;
+    historyEl.innerHTML = `이번 결과: <span>${finals.join(' + ')}</span>`;
+
+    rolling = false;
+    rollBtn.disabled = false;
+  }, ROLL_MS);
 }
 
 document.querySelectorAll('#count button').forEach(btn => {
