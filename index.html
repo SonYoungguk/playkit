@@ -15,7 +15,7 @@
   header { text-align: center; margin-bottom: 48px; }
   h1 { font-size: 40px; font-weight: 800; letter-spacing: -1px; }
   .sub { color: #8a92a3; margin-top: 10px; font-size: 16px; }
-  .grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 20px; }
   @media (max-width: 720px){ .grid { grid-template-columns: 1fr; } }
   a.card {
     display: block; text-decoration: none; color: inherit;
@@ -29,6 +29,7 @@
   .t1 { background: rgba(79,209,197,.15); color: #4fd1c5; }
   .t2 { background: rgba(124,140,255,.15); color: #7c8cff; }
   .t3 { background: rgba(255,107,91,.15); color: #ff6b5b; }
+  .t4 { background: rgba(255,207,91,.15); color: #ffcf5b; }
   a.card h2 { font-size: 20px; margin-bottom: 8px; }
   a.card p { color: #8a92a3; font-size: 14px; line-height: 1.5; }
   footer { text-align: center; margin-top: 48px; color: #5a6270; font-size: 13px; }
@@ -38,7 +39,7 @@
   <div class="wrap">
     <header>
       <h1>Playkit</h1>
-      <p class="sub">빌드 없이 바로 열리는 미니 앱 3종 · 하나의 폴더에</p>
+      <p class="sub">빌드 없이 바로 열리는 미니 앱 4종 · 하나의 폴더에</p>
     </header>
     <div class="grid">
       <a class="card" href="focus.html">
@@ -58,6 +59,12 @@
         <span class="tag t3">게임</span>
         <h2>Color Rush</h2>
         <p>글자에 칠해진 색을 빠르게 맞히는 반사신경 게임. 스트룹 효과 도전!</p>
+      </a>
+      <a class="card" href="dice.html">
+        <div class="emoji">🎲</div>
+        <span class="tag t4">도구</span>
+        <h2>Dice</h2>
+        <p>주사위를 1~5개까지 굴려 결과와 합계를 확인. 보드게임이나 무작위 선택에 딱.</p>
       </a>
     </div>
     <footer>각 카드를 클릭하면 앱이 열립니다 · 오프라인에서도 작동</footer>
