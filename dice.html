@@ -15,6 +15,8 @@
     --muted: #8a92a3;
     --line: #2a303c;
     --pip: #1a1d27;
+    --die-size: 76px;
+    --half: 38px; /* die-size / 2, 큐브 각 면을 바깥으로 밀어내는 거리 */
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body {
@@ -36,26 +38,43 @@
   .count button.active { background: var(--accent); color: #2b2405; border-color: var(--accent); }
 
   .dice-area {
-    display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;
-    min-height: 90px; margin-bottom: 28px;
+    display: flex; flex-wrap: wrap; gap: 22px; justify-content: center;
+    min-height: 110px; margin-bottom: 28px; padding: 8px 0;
   }
-  .die {
-    width: 72px; height: 72px; border-radius: 16px;
-    background: linear-gradient(180deg, #fdfdfd, #e3e6ee);
-    box-shadow: 0 8px 24px rgba(0,0,0,.45), inset 0 -3px 6px rgba(0,0,0,.15);
+
+  /* 3D 무대: 원근감을 부여한다 */
+  .scene {
+    width: var(--die-size); height: var(--die-size);
+    perspective: 640px;
+  }
+  /* 큐브 본체: 자식 면들을 3D 공간에 배치하고, 회전을 감속 트랜지션으로 애니메이션한다 */
+  .cube {
+    position: relative; width: 100%; height: 100%;
+    transform-style: preserve-3d;
+    transform: rotateX(-16deg) rotateY(20deg); /* 기본(대기) 자세 — 3D로 보이게 살짝 기울임 */
+    transition: transform 1.7s cubic-bezier(.18,.74,.2,1); /* 처음 빠르게 → 서서히 감속 */
+  }
+  .face {
+    position: absolute; width: var(--die-size); height: var(--die-size);
+    border-radius: 14px;
+    background: linear-gradient(150deg, #ffffff, #dfe3ee);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.06), inset 0 -4px 8px rgba(0,0,0,.12);
     display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr);
     padding: 12px; gap: 2px;
+    backface-visibility: hidden;
   }
-  .die.rolling { animation: shake .5s ease; }
-  @keyframes shake {
-    0%,100% { transform: translateY(0) rotate(0); }
-    25% { transform: translateY(-10px) rotate(-12deg); }
-    50% { transform: translateY(6px) rotate(10deg); }
-    75% { transform: translateY(-4px) rotate(-6deg); }
-  }
-  .die .pip {
+  /* 6개 면을 큐브의 각 방향으로 배치 (마주보는 면의 합은 7) */
+  .f1 { transform: translateZ(var(--half)); }                    /* 앞  = 1 */
+  .f6 { transform: rotateY(180deg) translateZ(var(--half)); }    /* 뒤  = 6 */
+  .f3 { transform: rotateY(90deg)  translateZ(var(--half)); }    /* 오른= 3 */
+  .f4 { transform: rotateY(-90deg) translateZ(var(--half)); }    /* 왼  = 4 */
+  .f2 { transform: rotateX(90deg)  translateZ(var(--half)); }    /* 위  = 2 */
+  .f5 { transform: rotateX(-90deg) translateZ(var(--half)); }    /* 아래= 5 */
+
+  .pip {
     align-self: center; justify-self: center;
     width: 12px; height: 12px; border-radius: 50%; background: var(--pip);
+    box-shadow: inset 0 1px 1px rgba(0,0,0,.35);
   }
   /* pip positions on a 3x3 grid */
   .p1 { grid-area: 1/1; } .p2 { grid-area: 1/2; } .p3 { grid-area: 1/3; }
@@ -72,6 +91,7 @@
   }
   .roll-btn:hover { transform: translateY(-2px); }
   .roll-btn:active { transform: translateY(0); }
+  .roll-btn:disabled { opacity: .55; cursor: default; transform: none; }
 
   .history { margin-top: 24px; color: var(--muted); font-size: 13px; min-height: 20px; }
   .history span { color: var(--text); }
@@ -109,7 +129,22 @@ const FACES = {
   6: [1, 3, 4, 6, 7, 9],
 };
 
+// 각 눈을 정면으로 보이게 하려면 큐브를 이만큼 회전시킨다 [rotateX, rotateY]
+const SHOW = {
+  1: [0, 0],
+  2: [-90, 0],
+  3: [0, -90],
+  4: [0, 90],
+  5: [90, 0],
+  6: [0, 180],
+};
+
+const ROLL_MS = 1700; // 트랜지션 시간과 동일하게 맞춤
+const TILT_X = -16, TILT_Y = 20; // 멈춘 뒤에도 3D로 보이도록 유지하는 기울기(대기 자세와 동일)
 let count = 2;
+let rolling = false;
+let cubes = []; // 현재 화면의 큐브 요소들
+
 const diceArea = document.getElementById('diceArea');
 const totalEl = document.getElementById('total');
 const historyEl = document.getElementById('history');
@@ -117,35 +152,84 @@ const rollBtn = document.getElementById('rollBtn');
 
 function rollOne(){ return Math.floor(Math.random() * 6) + 1; }
 
-function drawDie(value){
-  const die = document.createElement('div');
-  die.className = 'die rolling';
-  FACES[value].forEach(spot => {
-    const pip = document.createElement('div');
-    pip.className = 'pip p' + spot;
-    die.appendChild(pip);
-  });
-  return die;
+// 큐브 한 개(6면 전부)를 만든다
+function buildCube(){
+  const scene = document.createElement('div');
+  scene.className = 'scene';
+  const cube = document.createElement('div');
+  cube.className = 'cube';
+  for(let v = 1; v <= 6; v++){
+    const face = document.createElement('div');
+    face.className = 'face f' + v;
+    FACES[v].forEach(spot => {
+      const pip = document.createElement('div');
+      pip.className = 'pip p' + spot;
+      face.appendChild(pip);
+    });
+    cube.appendChild(face);
+  }
+  scene.appendChild(cube);
+  // 누적 회전량 — 매번 여러 바퀴씩 더해 항상 앞으로만 구르게 한다
+  cube._accX = 0;
+  cube._accY = 0;
+  return { scene, cube };
+}
+
+// count에 맞춰 큐브들을 새로 배치한다
+function buildDice(n){
+  diceArea.innerHTML = '';
+  cubes = [];
+  for(let i = 0; i < n; i++){
+    const { scene, cube } = buildCube();
+    diceArea.appendChild(scene);
+    cubes.push(cube);
+  }
 }
 
 function roll(){
-  const values = Array.from({ length: count }, rollOne);
-  diceArea.innerHTML = '';
-  values.forEach(v => diceArea.appendChild(drawDie(v)));
+  if(rolling) return;              // 구르는 중엔 중복 실행 방지
+  rolling = true;
+  rollBtn.disabled = true;
 
-  const sum = values.reduce((a, b) => a + b, 0);
-  totalEl.innerHTML = `합계 <b>${sum}</b>`;
-  historyEl.innerHTML = `이번 결과: <span>${values.join(' + ')}</span>`;
+  const finals = Array.from({ length: count }, rollOne);
+
+  cubes.forEach((cube, i) => {
+    const [tx, ty] = SHOW[finals[i]];
+    // 주사위마다 3~5바퀴씩 무작위로 더 굴려 자연스럽게
+    const spinX = 3 + Math.floor(Math.random() * 3);
+    const spinY = 3 + Math.floor(Math.random() * 3);
+    cube._accX += spinX * 360;     // 누적값은 계속 커지므로 회전은 항상 전진
+    cube._accY += spinY * 360;
+    const rx = cube._accX + tx + TILT_X; // 여러 바퀴 + 최종 눈을 (살짝 기울여) 정면으로
+    const ry = cube._accY + ty + TILT_Y;
+    cube.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+  });
+
+  totalEl.textContent = '굴리는 중…';
+  historyEl.innerHTML = '';
+
+  // 감속 트랜지션이 끝나는 시점에 결과를 확정한다
+  setTimeout(() => {
+    const sum = finals.reduce((a, b) => a + b, 0);
+    totalEl.innerHTML = `합계 <b>${sum}</b>`;
+    historyEl.innerHTML = `이번 결과: <span>${finals.join(' + ')}</span>`;
+    rolling = false;
+    rollBtn.disabled = false;
+  }, ROLL_MS);
 }
 
 document.querySelectorAll('#count button').forEach(btn => {
   btn.onclick = () => {
+    if(rolling) return;            // 구르는 중엔 개수 변경 금지
     document.querySelectorAll('#count button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     count = +btn.dataset.n;
+    buildDice(count);
   };
 });
 rollBtn.onclick = roll;
+
+buildDice(count); // 첫 화면에 대기 상태의 3D 주사위를 보여준다
 </script>
 </body>
 </html>
