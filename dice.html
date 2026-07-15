@@ -13,6 +13,8 @@
     --muted: #8a92a3;
     --line: #2a303c;
     --pip: #1a1d27;
+    --die: 54px;
+    --half: 27px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body {
@@ -44,26 +46,45 @@
       inset 0 -8px 22px rgba(0,0,0,.45),
       0 20px 55px rgba(0,0,0,.5);
   }
-  /* 주사위가 굴러다니는 바닥(벽 안쪽 영역) */
+  /* 주사위가 굴러다니는 바닥(벽 안쪽 영역) — 위에서 보는 원근감 부여 */
   .floor {
     position: absolute; inset: 16px; border-radius: 12px; overflow: hidden;
     box-shadow: inset 0 2px 10px rgba(0,0,0,.5);
   }
+
+  /* 3D 주사위: 위치 이동용 래퍼 + 그 안에서 회전하는 큐브 */
   .die {
-    position: absolute; top: 0; left: 0; width: 52px; height: 52px;
-    border-radius: 11px;
-    background: linear-gradient(150deg, #ffffff, #e2e6f0);
-    box-shadow: 0 6px 11px rgba(0,0,0,.42);
-    display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr);
-    padding: 9px; gap: 2px;
+    position: absolute; top: 0; left: 0; width: var(--die); height: var(--die);
+    perspective: 600px;
+    filter: drop-shadow(0 6px 6px rgba(0,0,0,.45));
     will-change: transform;
   }
+  .cube {
+    position: relative; width: 100%; height: 100%;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  .face {
+    position: absolute; width: var(--die); height: var(--die);
+    border-radius: 11px;
+    background: linear-gradient(150deg, #ffffff, #dfe3ee);
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+    display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr);
+    padding: 8px; gap: 2px;
+    backface-visibility: hidden;
+  }
+  .f1 { transform: translateZ(var(--half)); }
+  .f6 { transform: rotateY(180deg) translateZ(var(--half)); }
+  .f3 { transform: rotateY(90deg)  translateZ(var(--half)); }
+  .f4 { transform: rotateY(-90deg) translateZ(var(--half)); }
+  .f2 { transform: rotateX(90deg)  translateZ(var(--half)); }
+  .f5 { transform: rotateX(-90deg) translateZ(var(--half)); }
+
   .pip {
     align-self: center; justify-self: center;
     width: 9px; height: 9px; border-radius: 50%; background: var(--pip);
     box-shadow: inset 0 1px 1px rgba(0,0,0,.3);
   }
-  /* pip positions on a 3x3 grid */
   .p1 { grid-area: 1/1; } .p2 { grid-area: 1/2; } .p3 { grid-area: 1/3; }
   .p4 { grid-area: 2/1; } .p5 { grid-area: 2/2; } .p6 { grid-area: 2/3; }
   .p7 { grid-area: 3/1; } .p8 { grid-area: 3/2; } .p9 { grid-area: 3/3; }
@@ -134,13 +155,15 @@ const FACES = {
   5: [1, 3, 5, 7, 9],
   6: [1, 3, 4, 6, 7, 9],
 };
+// 각 눈을 카메라 쪽(정면)으로 보이게 하는 큐브 회전 [rotateX, rotateY]
+const SHOW = { 1:[0,0], 2:[-90,0], 3:[0,-90], 4:[0,90], 5:[90,0], 6:[0,180] };
 
 // 물리 상수
 const FRICTION = 0.965;     // 마찰(매 프레임 속도 감소 → 서서히 멈춤)
 const WALL_BOUNCE = 0.66;   // 벽에 튕길 때 남는 속도 비율
-const STOP_SPEED = 0.35;    // 이 속도 아래면 멈춘 것으로 간주
-const TUMBLE_SPEED = 2.2;   // 이 속도 위에선 눈이 마구 바뀜(구르는 느낌)
-const R = 26;               // 주사위 반지름(크기의 절반)
+const STOP_SPEED = 0.4;     // 이 속도 아래면 멈춘 것으로 간주
+const ROLL_K = 2.3;         // 1px 이동당 큐브가 구르는 각도(도) — 진짜 구르는 느낌
+const R = 27;               // 주사위 반지름(크기의 절반)
 
 const floor = document.getElementById('floor');
 const tray = document.getElementById('tray');
@@ -159,7 +182,6 @@ const rand = (min, max) => Math.random() * (max - min) + min;
 const rollOne = () => Math.floor(Math.random() * 6) + 1;
 
 function measure(){
-  // 보이는 탭에선 clientWidth가 정확하지만, 숨김 탭 등에선 0이 나올 수 있어 폴백을 둔다
   floorW = floor.clientWidth;
   floorH = floor.clientHeight;
   if(!floorW){
@@ -170,20 +192,28 @@ function measure(){
   if(!floorW || floorW <= 0) floorW = floorH = 328; // 최후의 폴백(측정 불가 환경)
 }
 
-function renderFace(el, face){
-  el.innerHTML = '';
-  FACES[face].forEach(spot => {
-    const pip = document.createElement('div');
-    pip.className = 'pip p' + spot;
-    el.appendChild(pip);
-  });
+// 큐브 6면을 만든다(값은 고정) — 회전만으로 굴러가는 모습을 표현
+function buildCube(){
+  const cube = document.createElement('div');
+  cube.className = 'cube';
+  for(let v = 1; v <= 6; v++){
+    const face = document.createElement('div');
+    face.className = 'face f' + v;
+    FACES[v].forEach(spot => {
+      const pip = document.createElement('div');
+      pip.className = 'pip p' + spot;
+      face.appendChild(pip);
+    });
+    cube.appendChild(face);
+  }
+  return cube;
 }
 
 function drawDie(d){
-  d.el.style.transform = `translate(${d.x - R}px, ${d.y - R}px) rotate(${d.angle}deg)`;
+  d.el.style.transform = `translate(${d.x - R}px, ${d.y - R}px)`;
+  d.cube.style.transform = `rotateX(${d.rx}deg) rotateY(${d.ry}deg)`;
 }
 
-// count에 맞춰 주사위를 상자 안에 새로 배치한다
 function buildDice(n){
   cancelAnimationFrame(rafId);
   animating = false;
@@ -193,10 +223,13 @@ function buildDice(n){
   for(let i = 0; i < n; i++){
     const el = document.createElement('div');
     el.className = 'die';
+    const cube = buildCube();
+    el.appendChild(cube);
     floor.appendChild(el);
-    const d = { el, x: 0, y: 0, vx: 0, vy: 0, angle: rand(0, 360), va: 0, face: rollOne(), tick: 0 };
+    const face = rollOne();
+    const [rx, ry] = SHOW[face];
+    const d = { el, cube, x: 0, y: 0, vx: 0, vy: 0, rx: rx - 12, ry: ry + 16, face };
     placeInitial(d);
-    renderFace(el, d.face);
     drawDie(d);
     dice.push(d);
   }
@@ -221,15 +254,13 @@ function roll(){
   if(animating) return;
   measure();
   hideResult();
-  // 각 주사위에 무작위 방향·세기의 속도와 회전을 준다
   dice.forEach(d => {
     d.final = rollOne();
+    d.cube.style.transition = '';        // 구르는 동안엔 트랜지션 없이 매 프레임 직접 회전
     const speed = rand(9, 14);
     const dir = rand(0, Math.PI * 2);
     d.vx = Math.cos(dir) * speed;
     d.vy = Math.sin(dir) * speed;
-    d.va = rand(-18, 18);
-    d.tick = 0;
   });
   animating = true;
   rollBtn.disabled = true;
@@ -241,12 +272,14 @@ function step(){
   for(const d of dice){
     d.x += d.vx; d.y += d.vy;
     d.vx *= FRICTION; d.vy *= FRICTION;
-    d.angle += d.va; d.va *= FRICTION;
+    // 이동 방향으로 큐브를 굴린다(진짜 구르는 회전)
+    d.rx += d.vy * ROLL_K;
+    d.ry -= d.vx * ROLL_K;
 
-    if(d.x < R){ d.x = R; d.vx = Math.abs(d.vx) * WALL_BOUNCE; d.va += rand(-4, 4); }
-    if(d.x > floorW - R){ d.x = floorW - R; d.vx = -Math.abs(d.vx) * WALL_BOUNCE; d.va += rand(-4, 4); }
-    if(d.y < R){ d.y = R; d.vy = Math.abs(d.vy) * WALL_BOUNCE; d.va += rand(-4, 4); }
-    if(d.y > floorH - R){ d.y = floorH - R; d.vy = -Math.abs(d.vy) * WALL_BOUNCE; d.va += rand(-4, 4); }
+    if(d.x < R){ d.x = R; d.vx = Math.abs(d.vx) * WALL_BOUNCE; }
+    if(d.x > floorW - R){ d.x = floorW - R; d.vx = -Math.abs(d.vx) * WALL_BOUNCE; }
+    if(d.y < R){ d.y = R; d.vy = Math.abs(d.vy) * WALL_BOUNCE; }
+    if(d.y > floorH - R){ d.y = floorH - R; d.vy = -Math.abs(d.vy) * WALL_BOUNCE; }
   }
 
   // 2) 주사위끼리 충돌
@@ -256,15 +289,10 @@ function step(){
     }
   }
 
-  // 3) 그리기 + 구르는 동안 눈 바꾸기 + 멈췄는지 확인
+  // 3) 그리기 + 멈췄는지 확인
   let moving = false;
   for(const d of dice){
-    const sp = Math.hypot(d.vx, d.vy);
-    if(sp > STOP_SPEED || Math.abs(d.va) > 0.6) moving = true;
-    if(sp > TUMBLE_SPEED && (++d.tick % 3 === 0)){
-      d.face = rollOne();
-      renderFace(d.el, d.face);
-    }
+    if(Math.hypot(d.vx, d.vy) > STOP_SPEED) moving = true;
     drawDie(d);
   }
 
@@ -291,21 +319,30 @@ function resolveCollision(a, b){
     const diff = vb - va;
     a.vx += diff * nx; a.vy += diff * ny;
     b.vx -= diff * nx; b.vy -= diff * ny;
-    a.va += rand(-3, 3); b.va += rand(-3, 3);
   }
 }
 
+// 큐브를 최종 눈이 정면으로 오도록 부드럽게 정지시킨다
+function nearestAngle(current, target){
+  const diff = ((target - current) % 360 + 540) % 360 - 180;
+  return current + diff;
+}
 function settle(){
-  animating = false;
   dice.forEach(d => {
-    d.vx = d.vy = d.va = 0;
-    d.angle = Math.round(d.angle / 90) * 90;   // 반듯하게 정렬
-    d.face = d.final;
-    renderFace(d.el, d.face);
-    drawDie(d);
+    d.vx = d.vy = 0;
+    const [tx, ty] = SHOW[d.final];
+    d.rx = nearestAngle(d.rx, tx) - 12;   // 최종 눈 + 살짝 기울여 3D로
+    d.ry = nearestAngle(d.ry, ty) + 16;
+    d.cube.style.transition = 'transform .45s cubic-bezier(.2,.7,.3,1)';
+    d.el.style.transform = `translate(${d.x - R}px, ${d.y - R}px)`;
+    d.cube.style.transform = `rotateX(${d.rx}deg) rotateY(${d.ry}deg)`;
   });
-  showResult();
-  rollBtn.disabled = false;
+  setTimeout(() => {
+    dice.forEach(d => { d.cube.style.transition = ''; });
+    showResult();
+    animating = false;
+    rollBtn.disabled = false;
+  }, 470);
 }
 
 function showResult(){
@@ -329,7 +366,6 @@ document.querySelectorAll('#count button').forEach(btn => {
 rollBtn.onclick = roll;
 tray.onclick = roll;
 
-// 창 크기가 바뀌면 주사위를 상자 안으로 다시 가둔다
 window.addEventListener('resize', () => {
   measure();
   dice.forEach(d => {
@@ -339,10 +375,10 @@ window.addEventListener('resize', () => {
   });
 });
 
-// 상자 크기가 잡힌 뒤(레이아웃 완료) 주사위를 배치한다
+// 상자 크기가 잡힌 뒤 주사위를 배치한다
 function initWhenReady(){
   measure();
-  if(floorW === 0){ setTimeout(initWhenReady, 50); return; }
+  if(!floorW){ setTimeout(initWhenReady, 50); return; }
   buildDice(count);
 }
 initWhenReady();
