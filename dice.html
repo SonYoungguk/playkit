@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dice — 주사위 굴리기</title>
+<style>
+  :root {
+    --bg: #0a0b10;
+    --panel: #181b22;
+    --panel2: #1f2530;
+    --accent: #ffcf5b;
+    --accent2: #4fd1c5;
+    --text: #eef0f6;
+    --muted: #8a92a3;
+    --line: #2a303c;
+    --pip: #1a1d27;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: radial-gradient(1000px 700px at 50% -10%, #1a1f2b 0%, var(--bg) 55%);
+    color: var(--text); min-height: 100vh;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    user-select: none;
+  }
+  .app { width: 100%; max-width: 480px; text-align: center; }
+  h1 { font-size: 15px; letter-spacing: .5px; color: var(--muted); font-weight: 600; text-transform: uppercase; margin-bottom: 24px; }
+
+  .count { display: flex; gap: 8px; justify-content: center; margin-bottom: 28px; }
+  .count button {
+    width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line);
+    background: transparent; color: var(--muted); font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: .15s;
+  }
+  .count button.active { background: var(--accent); color: #2b2405; border-color: var(--accent); }
+
+  .dice-area {
+    display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;
+    min-height: 90px; margin-bottom: 28px;
+  }
+  .die {
+    width: 72px; height: 72px; border-radius: 16px;
+    background: linear-gradient(180deg, #fdfdfd, #e3e6ee);
+    box-shadow: 0 8px 24px rgba(0,0,0,.45), inset 0 -3px 6px rgba(0,0,0,.15);
+    display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr);
+    padding: 12px; gap: 2px;
+  }
+  .die.rolling { animation: shake .5s ease; }
+  @keyframes shake {
+    0%,100% { transform: translateY(0) rotate(0); }
+    25% { transform: translateY(-10px) rotate(-12deg); }
+    50% { transform: translateY(6px) rotate(10deg); }
+    75% { transform: translateY(-4px) rotate(-6deg); }
+  }
+  .die .pip {
+    align-self: center; justify-self: center;
+    width: 12px; height: 12px; border-radius: 50%; background: var(--pip);
+  }
+  /* pip positions on a 3x3 grid */
+  .p1 { grid-area: 1/1; } .p2 { grid-area: 1/2; } .p3 { grid-area: 1/3; }
+  .p4 { grid-area: 2/1; } .p5 { grid-area: 2/2; } .p6 { grid-area: 2/3; }
+  .p7 { grid-area: 3/1; } .p8 { grid-area: 3/2; } .p9 { grid-area: 3/3; }
+
+  .total { font-size: 15px; color: var(--muted); margin-bottom: 24px; min-height: 22px; }
+  .total b { color: var(--text); font-size: 22px; }
+
+  .roll-btn {
+    width: 100%; padding: 16px; border-radius: 14px; border: none;
+    background: var(--accent2); color: #052b27; font-size: 17px; font-weight: 800;
+    cursor: pointer; transition: .15s;
+  }
+  .roll-btn:hover { transform: translateY(-2px); }
+  .roll-btn:active { transform: translateY(0); }
+
+  .history { margin-top: 24px; color: var(--muted); font-size: 13px; min-height: 20px; }
+  .history span { color: var(--text); }
+</style>
+</head>
+<body>
+  <div class="app">
+    <h1>주사위 굴리기</h1>
+
+    <div class="count" id="count">
+      <button data-n="1">1</button>
+      <button data-n="2" class="active">2</button>
+      <button data-n="3">3</button>
+      <button data-n="4">4</button>
+      <button data-n="5">5</button>
+    </div>
+
+    <div class="dice-area" id="diceArea"></div>
+
+    <div class="total" id="total">굴려서 시작해 보세요</div>
+
+    <button class="roll-btn" id="rollBtn">🎲 굴리기</button>
+
+    <div class="history" id="history"></div>
+  </div>
+
+<script>
+// 주사위 눈(1~6)에 대응하는 pip 위치 (3x3 격자 칸 번호)
+const FACES = {
+  1: [5],
+  2: [1, 9],
+  3: [1, 5, 9],
+  4: [1, 3, 7, 9],
+  5: [1, 3, 5, 7, 9],
+  6: [1, 3, 4, 6, 7, 9],
+};
+
+let count = 2;
+const diceArea = document.getElementById('diceArea');
+const totalEl = document.getElementById('total');
+const historyEl = document.getElementById('history');
+const rollBtn = document.getElementById('rollBtn');
+
+function rollOne(){ return Math.floor(Math.random() * 6) + 1; }
+
+function drawDie(value){
+  const die = document.createElement('div');
+  die.className = 'die rolling';
+  FACES[value].forEach(spot => {
+    const pip = document.createElement('div');
+    pip.className = 'pip p' + spot;
+    die.appendChild(pip);
+  });
+  return die;
+}
+
+function roll(){
+  const values = Array.from({ length: count }, rollOne);
+  diceArea.innerHTML = '';
+  values.forEach(v => diceArea.appendChild(drawDie(v)));
+
+  const sum = values.reduce((a, b) => a + b, 0);
+  totalEl.innerHTML = `합계 <b>${sum}</b>`;
+  historyEl.innerHTML = `이번 결과: <span>${values.join(' + ')}</span>`;
+}
+
+document.querySelectorAll('#count button').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#count button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    count = +btn.dataset.n;
+  };
+});
+rollBtn.onclick = roll;
+</script>
+</body>
+</html>
