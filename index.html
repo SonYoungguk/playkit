@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Playkit — 미니 앱 3종</title>
+<title>Playkit — 미니 앱 4종</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -39,7 +39,7 @@
   <div class="wrap">
     <header>
       <h1>Playkit</h1>
-      <p class="sub">빌드 없이 바로 열리는 미니 앱 4종 · 하나의 폴더에</p>
+      <p class="sub">빌드 없이 바로 열리는 미니 앱 <span id="appCount">4</span>종 · 하나의 폴더에</p>
     </header>
     <div class="grid">
       <a class="card" href="focus.html">
@@ -69,5 +69,11 @@
     </div>
     <footer>각 카드를 클릭하면 앱이 열립니다 · 오프라인에서도 작동</footer>
   </div>
+<script>
+  // 앱 카드 개수를 세어 부제와 탭 제목의 숫자를 자동으로 맞춘다(앱을 추가/삭제해도 자동 갱신)
+  const appCount = document.querySelectorAll('.grid a.card').length;
+  document.getElementById('appCount').textContent = appCount;
+  document.title = `Playkit — 미니 앱 ${appCount}종`;
+</script>
 </body>
 </html>
