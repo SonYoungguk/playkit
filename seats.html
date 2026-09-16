@@ -96,11 +96,20 @@
 
   .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
 
+  .tabs { display: flex; gap: 6px; background: var(--panel); border: 1px solid var(--line); padding: 5px; border-radius: 14px; margin-bottom: 16px; }
+  .tabs button {
+    flex: 1; padding: 9px 10px; border-radius: 10px; border: 1px solid transparent; background: transparent;
+    color: var(--muted); font-size: 12px; font-weight: 700; cursor: pointer; transition: .15s;
+  }
+  .tabs button.on { background: var(--panel2); color: var(--teal); border-color: rgba(94,234,212,.25); }
+  .tabs button.on.back { color: var(--indigo); border-color: rgba(139,157,255,.3); }
+
   .board-bar {
     background: var(--panel); border: 1px solid var(--line); border-radius: 10px 10px 4px 4px;
     text-align: center; padding: 8px; font-size: 12px; color: var(--muted); margin-bottom: 4px;
     letter-spacing: .04em;
   }
+  .board-bar.bottom { border-radius: 4px 4px 10px 10px; margin-bottom: 0; margin-top: 4px; }
   .chart-panel {
     background: linear-gradient(180deg, var(--panel), var(--panel2));
     border: 1px solid var(--line); border-radius: 20px; padding: 20px;
@@ -154,7 +163,7 @@
   .home-btn:hover { background: rgba(255,255,255,.16); transform: translateY(-1px); }
 
   @media print {
-    .home-btn, header.top, .layout > .side, .actions, .legend, .conflict-list, .summary-row { display: none !important; }
+    .home-btn, header.top, .layout > .side, .actions, .tabs, .legend, .conflict-list, .summary-row { display: none !important; }
     .layout { display: block; }
     body { background: #fff; color: #000; padding: 0; }
     .chart-panel { border: none; box-shadow: none; }
@@ -233,6 +242,11 @@
         <button class="danger" id="resetBtn">전체 초기화</button>
       </div>
 
+      <div class="tabs">
+        <button id="tabFront" class="on" type="button">👁 교실 앞쪽 기준 (칠판 위)</button>
+        <button id="tabBack" type="button">↩ 교실 뒤쪽 기준 (칠판 아래, 180°)</button>
+      </div>
+
       <div id="mainArea"></div>
     </div>
   </div>
@@ -241,6 +255,7 @@
 <script>
 (function() {
   var STORAGE_KEY = 'seating-planner-v1';
+  var viewPerspective = 'front';
   var state = {
     students: [],
     conflicts: [],
@@ -498,10 +513,13 @@
     }
 
     var scoreInfo = computeScore(state.arrangement, rows, cols, state.config.front);
+    var isBack = viewPerspective === 'back';
+
+    var boardBarHtml = '<div class="board-bar' + (isBack ? ' bottom' : '') + '">칠판 쪽</div>';
+    var seatGridHtml = '<div class="seat-grid" id="seatGrid" style="grid-template-columns: repeat(' + cols + ', 92px);"></div>';
 
     var html = '<div class="chart-panel">';
-    html += '<div class="board-bar">칠판 쪽</div>';
-    html += '<div class="seat-grid" id="seatGrid" style="grid-template-columns: repeat(' + cols + ', 92px);"></div>';
+    html += isBack ? (seatGridHtml + boardBarHtml) : (boardBarHtml + seatGridHtml);
     html += '<div class="legend">';
     html += '<span><span class="dot" style="background:var(--teal)"></span>앞자리가 필요한 학생</span>';
     html += '<span><span class="dot" style="background:var(--rose)"></span>갈등 관계가 붙어 있는 자리</span>';
@@ -521,31 +539,37 @@
     main.innerHTML = html;
 
     var grid = document.getElementById('seatGrid');
-    for (var idx = 0; idx < seatCount; idx++) {
-      var sid = state.arrangement[idx];
-      var seatEl = document.createElement('div');
-      seatEl.dataset.idx = idx;
-      if (!sid) {
-        seatEl.className = 'seat empty';
-        seatEl.textContent = '빈자리';
-      } else {
-        var student = studentById(sid);
-        seatEl.className = 'seat' + (scoreInfo.conflictSeats[idx] ? ' conflict' : '') + (student && student.frontNeeded ? ' frontneed' : '');
-        seatEl.draggable = true;
-        var nameEl = document.createElement('div');
-        nameEl.className = 'sname';
-        nameEl.textContent = student ? student.name : '';
-        seatEl.appendChild(nameEl);
-        if (scoreInfo.conflictSeats[idx]) {
-          var warnEl = document.createElement('div');
-          warnEl.className = 'warn-icon';
-          warnEl.textContent = '갈등 주의';
-          seatEl.appendChild(warnEl);
+    var rOrder = [], cOrder = [];
+    for (var ri = 0; ri < rows; ri++) rOrder.push(isBack ? rows - 1 - ri : ri);
+    for (var ci = 0; ci < cols; ci++) cOrder.push(isBack ? cols - 1 - ci : ci);
+    rOrder.forEach(function(r) {
+      cOrder.forEach(function(c) {
+        var idx = r * cols + c;
+        var sid = state.arrangement[idx];
+        var seatEl = document.createElement('div');
+        seatEl.dataset.idx = idx;
+        if (!sid) {
+          seatEl.className = 'seat empty';
+          seatEl.textContent = '빈자리';
+        } else {
+          var student = studentById(sid);
+          seatEl.className = 'seat' + (scoreInfo.conflictSeats[idx] ? ' conflict' : '') + (student && student.frontNeeded ? ' frontneed' : '');
+          seatEl.draggable = true;
+          var nameEl = document.createElement('div');
+          nameEl.className = 'sname';
+          nameEl.textContent = student ? student.name : '';
+          seatEl.appendChild(nameEl);
+          if (scoreInfo.conflictSeats[idx]) {
+            var warnEl = document.createElement('div');
+            warnEl.className = 'warn-icon';
+            warnEl.textContent = '갈등 주의';
+            seatEl.appendChild(warnEl);
+          }
         }
-      }
-      attachDragEvents(seatEl);
-      grid.appendChild(seatEl);
-    }
+        attachDragEvents(seatEl);
+        grid.appendChild(seatEl);
+      });
+    });
 
     if (scoreInfo.conflictCount > 0) {
       var detailList = document.getElementById('conflictDetailList');
@@ -602,6 +626,19 @@
     document.getElementById('cfgFront').value = state.config.front;
   }
 
+  // ---------- 시점 전환 ----------
+  function setPerspective(mode) {
+    if (viewPerspective === mode) return;
+    viewPerspective = mode;
+    var tf = document.getElementById('tabFront'), tb = document.getElementById('tabBack');
+    if (mode === 'front') {
+      tf.classList.add('on'); tb.classList.remove('on', 'back');
+    } else {
+      tb.classList.add('on', 'back'); tf.classList.remove('on');
+    }
+    renderMain();
+  }
+
   // ---------- 예시 명단 ----------
   function loadDemoStudents() {
     if (state.students.length > 0 && !confirm('현재 명단을 지우고 예시 학생 30명을 넣을까요?')) return;
@@ -638,6 +675,8 @@
     if (e.key === 'Enter') document.getElementById('addStudentBtn').click();
   });
   document.getElementById('loadDemoBtn').addEventListener('click', loadDemoStudents);
+  document.getElementById('tabFront').addEventListener('click', function() { setPerspective('front'); });
+  document.getElementById('tabBack').addEventListener('click', function() { setPerspective('back'); });
 
   document.getElementById('addConflictBtn').addEventListener('click', function() {
     var a = document.getElementById('conflictA').value;
