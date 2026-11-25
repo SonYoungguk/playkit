@@ -13,7 +13,7 @@
 | 🪑 **[Seats](seats.html)** | 학생 명단으로 교실 자리를 랜덤 배정합니다. 제외석·고정석·자리교환, 떨어뜨릴/붙여 앉힐 학생 관계 반영, 앞뒤 시점 전환, 배치도 이미지·한글(HWPX)·워드(DOCX) 저장을 지원합니다. |
 | 🎡 **[Roulette](roulette.html)** | 인원수만큼 칸이 생기는 번호 뽑기 룰렛입니다. 효과음과 함께 돌다가 멈추고, 뽑힌 번호 제외 모드도 지원합니다. |
 | ⏱️ **[Stopwatch](stopwatch.html)** | 구간 기록이 되는 스톱워치와 알림음이 울리는 카운트다운 타이머입니다. 전체 화면으로 TV·프로젝터에 크게 띄울 수 있고, 키보드 단축키(Space·L·R·F)를 지원합니다. |
-| 📑 **[PDF Edit](pdfedit.html)** | 여러 PDF를 올려 하나로 합치고, 페이지를 드래그해 순서를 바꾸고, 90° 단위로 회전·삭제한 뒤 새 PDF로 다운로드합니다. 파일은 서버로 전송되지 않고 브라우저 안에서만 처리됩니다. (PDF 처리 라이브러리를 CDN에서 불러오므로 인터넷 연결 필요) |
+| 📑 **[PDF Edit](pdfedit.html)** | 여러 PDF를 올려 하나로 합치고, 페이지를 드래그해 순서를 바꾸고, 90° 단위로 회전·삭제한 뒤 새 PDF로 저장합니다. 페이지를 클릭하면 큰 화면으로 미리볼 수 있고, 크롬·엣지(PC)에서는 저장할 폴더와 파일 이름을 직접 고를 수 있습니다. 파일은 서버로 전송되지 않고 브라우저 안에서만 처리됩니다. (PDF 처리 라이브러리를 CDN에서 불러오므로 인터넷 연결 필요) |
 | 🍽️ **[GatherSpot](https://sonyoungguk.github.io/moim/)** | 협의회·회식 장소를 단체 인원·주차·음식 종류·인당 가격으로 걸러 네이버 지도에 보여줍니다. 부산 명지 지역 가게 수록. ([별도 저장소](https://github.com/SonYoungguk/moim), 인터넷 연결 필요) |
 | 📝 **[수업지도안 생성기](https://lesson-plan-generator-steel.vercel.app)** | 교과서 PDF와 수업 아이디어를 입력하면 AI가 강의식·토론식·활동중심식 지도안 3안을 생성합니다. Word 다운로드 또는 Google Docs 저장 지원. ([별도 저장소](https://github.com/SonYoungguk/lesson-plan-generator), 인터넷 연결 필요) |
 | 💰 **[공무원연금 계산기](https://sonyoungguk.github.io/pension-calculator/)** | 법령 기반으로 공무원 퇴직연금·퇴직수당·실수령액을 추정하고, 언제 퇴직하는 것이 유리한지 시점별로 비교합니다. ([별도 저장소](https://github.com/SonYoungguk/pension-calculator), 인터넷 연결 필요) |
