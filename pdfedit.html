@@ -23,16 +23,27 @@
       radial-gradient(900px 620px at 15% -12%, rgba(251,113,133,.08), transparent 60%),
       radial-gradient(1000px 700px at 85% -18%, rgba(139,157,255,.08), transparent 60%),
       var(--bg);
-    color: var(--text); min-height: 100vh; padding: 72px 16px 120px;
+    color: var(--text); height: 100vh; overflow: hidden;
   }
-  .wrap { max-width: 1100px; margin: 0 auto; }
-  header.top { text-align: center; margin-bottom: 28px; }
-  header.top h1 { font-size: clamp(24px, 4vw, 32px); letter-spacing: -.8px; }
-  header.top p { color: var(--muted); margin-top: 8px; font-size: 14px; }
+  /* 왼쪽: 미리보기 / 오른쪽: 저장 → 업로드 → 페이지 목록 */
+  .app {
+    height: 100vh; padding: 16px; display: grid; gap: 14px;
+    grid-template-columns: minmax(0, 1.25fr) minmax(380px, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas: "view save" "view upload" "view list";
+  }
+  .pane {
+    background: linear-gradient(180deg, var(--panel), var(--panel2));
+    border: 1px solid var(--line); border-radius: 20px;
+  }
+  .viewer { grid-area: view; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .savebar { grid-area: save; display: flex; gap: 8px; align-items: center; padding: 10px; }
+  .upload { grid-area: upload; }
+  .list { grid-area: list; min-height: 0; overflow-y: auto; padding: 12px; }
 
   .home-btn {
-    position: fixed; top: 16px; left: 16px; z-index: 60;
-    width: 40px; height: 40px; border-radius: 12px;
+    flex: none;
+    width: 36px; height: 36px; border-radius: 11px;
     display: flex; align-items: center; justify-content: center;
     background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14);
     color: #eef0f6; text-decoration: none;
@@ -43,7 +54,7 @@
   .drop {
     display: block; cursor: pointer; text-align: center;
     border: 2px dashed rgba(255,255,255,.16); border-radius: 22px;
-    padding: 36px 20px; transition: .2s;
+    padding: 28px 16px; transition: .2s;
     background: linear-gradient(180deg, var(--panel), var(--panel2));
   }
   .drop:hover, .drop.over { border-color: var(--accent); background: rgba(251,113,133,.06); }
@@ -56,7 +67,8 @@
   .drop.compact span { display: none; }
   #fileInput { display: none; }
 
-  .files { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 6px; }
+  .files { display: flex; flex-wrap: wrap; gap: 8px; }
+  .files:empty { display: none; }
   .chip {
     display: inline-flex; align-items: center; gap: 8px; max-width: 100%;
     font-size: 12.5px; padding: 6px 8px 6px 12px; border-radius: 999px;
@@ -73,7 +85,7 @@
 
   .toolbar {
     display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-    margin: 16px 0; padding: 12px; border-radius: 16px;
+    margin: 12px 0; padding: 10px; border-radius: 14px;
     background: linear-gradient(180deg, var(--panel), var(--panel2)); border: 1px solid var(--line);
   }
   .toolbar .info { color: var(--muted); font-size: 13px; margin-right: auto; padding-left: 4px; }
@@ -87,7 +99,7 @@
   .btn:disabled { opacity: .4; cursor: default; }
   .btn.danger:hover:not(:disabled) { background: rgba(251,113,133,.2); border-color: rgba(251,113,133,.4); }
 
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
   .page {
     position: relative; border-radius: 16px; padding: 10px 10px 8px;
     background: linear-gradient(180deg, var(--panel), var(--panel2));
@@ -96,6 +108,8 @@
   }
   .page:hover { border-color: rgba(255,255,255,.2); }
   .page.sel { border-color: var(--accent2); box-shadow: 0 0 0 2px rgba(139,157,255,.35); }
+  .page.cur { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(251,113,133,.45); }
+  .page.cur.sel { box-shadow: 0 0 0 2px rgba(251,113,133,.45), 0 0 0 5px rgba(139,157,255,.35); }
   .page.ghost { opacity: .35; }
   .page.chosen { cursor: grabbing; }
   .thumb {
@@ -133,57 +147,48 @@
 
   .empty { text-align: center; color: var(--muted); font-size: 14px; padding: 40px 0; }
 
-  .bottom {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-    background: rgba(7,8,13,.88); border-top: 1px solid var(--line);
-    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  }
-  .bottom .in { max-width: 1100px; margin: 0 auto; display: flex; gap: 10px; align-items: center; }
-  .bottom label { color: var(--muted); font-size: 13px; white-space: nowrap; }
-  .bottom input {
+  .savebar label { color: var(--muted); font-size: 13px; white-space: nowrap; padding-left: 6px; }
+  .savebar input {
     flex: 1; min-width: 0; background: var(--field); border: 1px solid var(--line); color: var(--text);
     border-radius: 10px; padding: 10px 12px; font-size: 14px;
   }
-  .bottom input:focus { outline: none; border-color: var(--accent); }
+  .savebar input:focus { outline: none; border-color: var(--accent); }
   .dl {
     border: none; border-radius: 12px; padding: 11px 18px; font-size: 14px; font-weight: 700; cursor: pointer;
     background: linear-gradient(135deg, #fb7185, #f472b6); color: #fff; white-space: nowrap;
     box-shadow: 0 8px 24px rgba(251,113,133,.3);
   }
   .dl:disabled { opacity: .4; cursor: default; box-shadow: none; }
-  @media (max-width: 560px) { .bottom label { display: none; } .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+  @media (max-width: 560px) { .savebar label { display: none; } .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
 
   .toast {
-    position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%) translateY(20px);
+    position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px);
     background: #1a1d27; border: 1px solid var(--line); color: var(--text);
     padding: 10px 16px; border-radius: 12px; font-size: 13.5px; opacity: 0; pointer-events: none;
     transition: .25s; z-index: 70; max-width: calc(100% - 32px); text-align: center;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  .thumb { cursor: zoom-in; }
+  .thumb { cursor: pointer; }
   .thumb::after {
-    content: "🔍"; position: absolute; right: 8px; bottom: 8px; font-size: 13px;
+    content: "👁"; position: absolute; right: 8px; bottom: 8px; font-size: 13px;
     width: 26px; height: 26px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
     background: rgba(7,8,13,.75); opacity: 0; transition: .15s;
   }
   .page:hover .thumb::after { opacity: 1; }
 
-  .viewer {
-    position: fixed; inset: 0; z-index: 80; display: flex; flex-direction: column;
-    background: rgba(4,5,9,.94); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
-  }
-  .viewer[hidden] { display: none; }
   .vbar {
     display: flex; align-items: center; gap: 8px; padding: 12px 16px;
     border-bottom: 1px solid var(--line);
   }
+  .vbar .brand { font-weight: 700; font-size: 15px; letter-spacing: -.3px; white-space: nowrap; margin-right: 6px; }
   .vbar .vt { margin-right: auto; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .vbar .vt b { margin-right: 8px; }
   .vbar .vt span { color: var(--muted); font-size: 13px; }
   .vstage { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; overflow: auto; padding: 16px 64px; }
   .vstage canvas { background: #fff; box-shadow: 0 10px 40px rgba(0,0,0,.6); max-width: 100%; max-height: 100%; }
   .vstage .loading { color: var(--muted); font-size: 14px; }
+  .vempty { text-align: center; color: var(--muted); font-size: 14px; line-height: 1.7; }
+  .vempty div { font-size: 44px; margin-bottom: 8px; opacity: .7; }
   .vnav {
     position: absolute; top: 50%; transform: translateY(-50%);
     width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,.15);
@@ -192,66 +197,73 @@
   .vnav:hover:not(:disabled) { background: rgba(255,255,255,.18); }
   .vnav:disabled { opacity: .25; cursor: default; }
   .vnav.prev { left: 12px; } .vnav.next { right: 12px; }
-  @media (max-width: 560px) { .vstage { padding: 12px; } .vnav { top: auto; bottom: 16px; transform: none; } .vbar .btn .lbl { display: none; } }
+  .vbar .btn:disabled { opacity: .35; }
 
-  .hint { color: #566076; font-size: 12px; text-align: center; margin-top: 18px; }
+  /* 좁은 화면: 저장 → 업로드 → 미리보기 → 페이지 목록 순으로 세로 배치 */
+  @media (max-width: 900px) {
+    body { height: auto; overflow: auto; }
+    .app {
+      height: auto; padding: 12px;
+      grid-template-columns: 1fr; grid-template-rows: auto;
+      grid-template-areas: "save" "upload" "view" "list";
+    }
+    .viewer { height: 68vh; }
+    .list { overflow: visible; }
+  }
+  @media (max-width: 560px) { .vstage { padding: 12px; } .vnav { top: auto; bottom: 16px; transform: none; } .vbar .btn .lbl, .vbar .brand { display: none; } }
+
+  .hint { color: #566076; font-size: 12px; text-align: center; margin-top: 14px; }
 </style>
 </head>
 <body>
-  <a href="index.html" class="home-btn" aria-label="홈으로" title="홈으로">
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
-  </a>
+  <div class="app">
+    <section class="pane viewer" aria-label="페이지 미리보기">
+      <div class="vbar">
+        <a href="index.html" class="home-btn" aria-label="홈으로" title="홈으로">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>
+        </a>
+        <span class="brand">📑 PDF Edit</span>
+        <div class="vt" id="vTitle"></div>
+        <button class="btn" id="vRotL" title="왼쪽으로 90° 회전" disabled>⟲<span class="lbl"> 왼쪽</span></button>
+        <button class="btn" id="vRotR" title="오른쪽으로 90° 회전" disabled>⟳<span class="lbl"> 오른쪽</span></button>
+        <button class="btn danger" id="vDel" title="이 페이지 삭제" disabled>🗑<span class="lbl"> 삭제</span></button>
+      </div>
+      <div class="vstage" id="vStage">
+        <button class="vnav prev" id="vPrev" aria-label="이전 페이지" disabled>‹</button>
+        <div id="vCanvas"></div>
+        <button class="vnav next" id="vNext" aria-label="다음 페이지" disabled>›</button>
+      </div>
+    </section>
 
-  <div class="wrap">
-    <header class="top">
-      <h1>📑 PDF Edit — 합치기 · 정렬 · 회전</h1>
-      <p>여러 PDF를 올려 한 파일로 합치고, 페이지 순서와 방향을 바꿔 다운로드하세요. 파일은 서버로 전송되지 않습니다.</p>
-    </header>
-
-    <label class="drop" id="drop">
-      <div class="big">📂</div>
-      <strong>PDF 파일을 끌어다 놓거나 클릭해서 선택</strong>
-      <span>여러 개를 한 번에 올릴 수 있어요 · 올린 순서대로 이어 붙습니다</span>
-      <input type="file" id="fileInput" accept="application/pdf,.pdf" multiple>
-    </label>
-
-    <div class="files" id="files"></div>
-
-    <div class="toolbar" id="toolbar" hidden>
-      <div class="info"><b id="pageCount">0</b>페이지 · 선택 <b id="selCount">0</b></div>
-      <button class="btn" id="selAll">전체 선택</button>
-      <button class="btn" id="rotL" title="선택한 페이지(없으면 전체)를 왼쪽으로 90°">⟲ 왼쪽 회전</button>
-      <button class="btn" id="rotR" title="선택한 페이지(없으면 전체)를 오른쪽으로 90°">⟳ 오른쪽 회전</button>
-      <button class="btn danger" id="delSel" disabled>선택 삭제</button>
-      <button class="btn danger" id="clearAll">모두 지우기</button>
-    </div>
-
-    <div class="grid" id="grid"></div>
-    <div class="empty" id="empty">아직 올린 PDF가 없습니다.</div>
-    <p class="hint" id="hint" hidden>페이지를 끌어서 순서를 바꾸세요 · 클릭하면 크게 볼 수 있어요 · 체크 박스로 여러 장을 골라 한꺼번에 회전/삭제할 수 있어요</p>
-  </div>
-
-  <div class="bottom">
-    <div class="in">
+    <div class="pane savebar">
       <label for="fname">파일 이름</label>
       <input id="fname" value="합친문서" placeholder="파일 이름">
       <button class="dl" id="dl" disabled>💾 PDF 저장</button>
     </div>
-  </div>
 
-  <div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="페이지 미리보기">
-    <div class="vbar">
-      <div class="vt" id="vTitle"></div>
-      <button class="btn" id="vRotL" title="왼쪽으로 90° 회전">⟲<span class="lbl"> 왼쪽</span></button>
-      <button class="btn" id="vRotR" title="오른쪽으로 90° 회전">⟳<span class="lbl"> 오른쪽</span></button>
-      <button class="btn danger" id="vDel" title="이 페이지 삭제">🗑<span class="lbl"> 삭제</span></button>
-      <button class="btn" id="vClose" title="닫기 (Esc)">✕</button>
-    </div>
-    <div class="vstage" id="vStage">
-      <button class="vnav prev" id="vPrev" aria-label="이전 페이지">‹</button>
-      <div id="vCanvas"></div>
-      <button class="vnav next" id="vNext" aria-label="다음 페이지">›</button>
-    </div>
+    <label class="drop upload" id="drop">
+      <div class="big">📂</div>
+      <strong>PDF 파일을 끌어다 놓거나 클릭해서 선택</strong>
+      <span>여러 개를 한 번에 올릴 수 있어요 · 올린 순서대로 이어 붙습니다 · 파일은 서버로 전송되지 않습니다</span>
+      <input type="file" id="fileInput" accept="application/pdf,.pdf" multiple>
+    </label>
+
+    <section class="pane list" aria-label="페이지 목록">
+      <div class="files" id="files"></div>
+
+      <div class="toolbar" id="toolbar" hidden>
+        <div class="info"><b id="pageCount">0</b>페이지 · 선택 <b id="selCount">0</b></div>
+        <button class="btn" id="selAll">전체 선택</button>
+        <button class="btn" id="rotL" title="선택한 페이지(없으면 전체)를 왼쪽으로 90°">⟲ 왼쪽 회전</button>
+        <button class="btn" id="rotR" title="선택한 페이지(없으면 전체)를 오른쪽으로 90°">⟳ 오른쪽 회전</button>
+        <button class="btn danger" id="delSel" disabled>선택 삭제</button>
+        <button class="btn danger" id="clearAll">모두 지우기</button>
+      </div>
+
+      <div class="grid" id="grid"></div>
+      <div class="empty" id="empty">아직 올린 PDF가 없습니다.</div>
+      <p class="hint" id="hint" hidden>페이지를 끌어서 순서를 바꾸세요 · 클릭하면 미리보기 창에 크게 보여요 · 체크 박스로 여러 장을 골라 한꺼번에 회전/삭제할 수 있어요</p>
+    </section>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -309,7 +321,8 @@
           pages.push(p); newPages.push(p);
           $('grid').appendChild(makeEl(p, file));
         }
-        renderFiles(); refresh();
+        if (!vCur && newPages.length) vCur = newPages[0]; // 처음 올리면 첫 페이지를 미리보기
+        renderFiles(); refresh(); renderViewer();
         for (const p of newPages) await renderThumb(p, file);
       } catch (err) {
         console.error(err);
@@ -387,43 +400,62 @@
 
   function removePages(list) {
     const ids = new Set(list.map(p => p.id));
+    const curGone = vCur && ids.has(vCur.id);
+    let ci = curGone ? pages.indexOf(vCur) : -1;
     list.forEach(p => p.el.remove());
+    if (curGone) {
+      // 보고 있던 페이지가 지워지면 그 자리의 다음(없으면 이전) 남은 페이지를 보여준다
+      const rest = pages.filter(p => !ids.has(p.id));
+      const after = pages.slice(ci).find(p => !ids.has(p.id));
+      vCur = after || rest[rest.length - 1] || null;
+    }
     pages = pages.filter(p => !ids.has(p.id));
     // 페이지가 하나도 남지 않은 파일은 목록에서 제거
     const used = new Set(pages.map(p => p.fileId));
     files.filter(f => !used.has(f.id)).forEach(f => f.doc.destroy());
     files = files.filter(f => used.has(f.id));
     renderFiles(); refresh();
+    if (curGone) renderViewer();
   }
 
-  // ---------- 큰 화면 미리보기 ----------
-  const viewer = $('viewer');
+  // ---------- 왼쪽 미리보기 ----------
   let vCur = null, vToken = 0;
 
   function openViewer(p) {
     vCur = p;
-    viewer.hidden = false;
-    document.body.style.overflow = 'hidden';
+    refresh();
     renderViewer();
-  }
-  function closeViewer() {
-    viewer.hidden = true; vCur = null; vToken++;
-    document.body.style.overflow = '';
-    $('vCanvas').innerHTML = '';
   }
   function stepViewer(d) {
     if (!vCur) return;
     const i = pages.indexOf(vCur) + d;
-    if (i >= 0 && i < pages.length) { vCur = pages[i]; renderViewer(); }
+    if (i >= 0 && i < pages.length) {
+      vCur = pages[i]; refresh(); renderViewer();
+      vCur.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
   }
-  async function renderViewer() {
-    const p = vCur; if (!p) return;
-    const token = ++vToken;
-    const file = files.find(f => f.id === p.fileId);
-    const i = pages.indexOf(p);
-    $('vTitle').innerHTML = `<b>${i + 1} / ${pages.length}</b><span>${esc(file.name)} · 원본 ${p.index + 1}쪽</span>`;
+  // 페이지 번호·버튼 상태만 갱신(순서 변경 등)
+  function updateViewerBar() {
+    const has = !!vCur;
+    ['vRotL', 'vRotR', 'vDel'].forEach(id => $(id).disabled = !has);
+    if (!has) { $('vTitle').innerHTML = ''; $('vPrev').disabled = $('vNext').disabled = true; return; }
+    const file = files.find(f => f.id === vCur.fileId);
+    const i = pages.indexOf(vCur);
+    $('vTitle').innerHTML = `<b>${i + 1} / ${pages.length}</b><span>${esc(file.name)} · 원본 ${vCur.index + 1}쪽</span>`;
     $('vPrev').disabled = i <= 0;
     $('vNext').disabled = i >= pages.length - 1;
+  }
+  async function renderViewer() {
+    const p = vCur;
+    const token = ++vToken;
+    updateViewerBar();
+    if (!p) {
+      $('vCanvas').innerHTML = pages.length
+        ? '<div class="vempty"><div>👁</div>오른쪽 목록에서 페이지를 클릭하면<br>여기에 크게 보여요</div>'
+        : '<div class="vempty"><div>📄</div>PDF를 올리면 여기에서<br>페이지를 크게 볼 수 있어요</div>';
+      return;
+    }
+    const file = files.find(f => f.id === p.fileId);
     try {
       const page = await file.doc.getPage(p.index + 1);
       const rotation = (((page.rotate + p.rot) % 360) + 360) % 360;
@@ -445,24 +477,14 @@
       if (token === vToken) $('vCanvas').innerHTML = '<span class="loading">미리보기를 불러오지 못했어요.</span>';
     }
   }
-  $('vClose').onclick = closeViewer;
   $('vPrev').onclick = () => stepViewer(-1);
   $('vNext').onclick = () => stepViewer(1);
   $('vRotL').onclick = () => vCur && rotate([vCur], -90);
   $('vRotR').onclick = () => vCur && rotate([vCur], 90);
-  $('vDel').onclick = () => {
-    if (!vCur) return;
-    const i = pages.indexOf(vCur);
-    removePages([vCur]);
-    if (!pages.length) return closeViewer();
-    vCur = pages[Math.min(i, pages.length - 1)];
-    renderViewer();
-  };
-  $('vStage').addEventListener('click', e => { if (e.target === $('vStage')) closeViewer(); });
+  $('vDel').onclick = () => { if (vCur) removePages([vCur]); };
   document.addEventListener('keydown', e => {
-    if (viewer.hidden) return;
-    if (e.key === 'Escape') closeViewer();
-    else if (e.key === 'ArrowLeft') stepViewer(-1);
+    if (!vCur || /^(INPUT|TEXTAREA)$/.test(e.target.tagName)) return;
+    if (e.key === 'ArrowLeft') stepViewer(-1);
     else if (e.key === 'ArrowRight') stepViewer(1);
   });
   let vResizeT;
@@ -524,7 +546,9 @@
     pages.forEach((p, i) => {
       p.el.querySelector('.num').textContent = i + 1;
       p.el.classList.toggle('sel', p.sel);
+      p.el.classList.toggle('cur', p === vCur);
     });
+    updateViewerBar();
     const n = pages.length, s = pages.filter(p => p.sel).length;
     $('pageCount').textContent = n;
     $('selCount').textContent = s;
@@ -626,6 +650,8 @@
   };
   if (!canPick) $('dl').title = '이 브라우저에서는 다운로드 폴더에 저장됩니다. 저장 위치를 고르려면 크롬·엣지(PC)를 쓰거나 브라우저 설정에서 "다운로드 전에 저장 위치 확인"을 켜세요.';
   else $('dl').title = '저장할 폴더와 파일 이름을 고를 수 있어요';
+
+  renderViewer(); // 빈 미리보기 안내 표시
 
   function esc(s) { return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 </script>
